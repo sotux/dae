@@ -44,6 +44,7 @@
 #endif
 #define MAX_LPM_SIZE 2048000
 #define MAX_LPM_NUM (MAX_MATCH_SET_LEN + 8)
+#define MAX_BYPASS_SOURCE_IP_NUM 1024
 #define MAX_DST_MAPPING_NUM (65536 * 2)
 #define MAX_TGID_PNAME_MAPPING_NUM (8192)
 #define MAX_COOKIE_PID_PNAME_MAPPING_NUM (65536)
@@ -209,6 +210,14 @@ struct {
 	// __uint(pinning, LIBBPF_PIN_BY_NAME);
 	__array(values, struct map_lpm_type);
 } lpm_array_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+	__uint(max_entries, MAX_BYPASS_SOURCE_IP_NUM);
+	__uint(key_size, sizeof(struct lpm_key));
+	__uint(value_size, sizeof(__u32));
+} bypass_source_ip_map SEC(".maps");
 
 enum __attribute__((packed)) MatchType {
 	/// WARNING: MUST SYNC WITH common/consts/ebpf.go.
@@ -995,6 +1004,15 @@ rearm:
 	return state;
 }
 
+static __always_inline bool is_bypass_source_ip(const union ip6 *ip)
+{
+	struct lpm_key key = {
+		.trie_key = { IPV6_BYTE_LENGTH * 8, {} },
+	};
+	__builtin_memcpy(key.data, ip, IPV6_BYTE_LENGTH);
+	return bpf_map_lookup_elem(&bypass_source_ip_map, &key) != NULL;
+}
+
 static __always_inline int do_tproxy_lan_egress(struct __sk_buff *skb, u32 link_h_len)
 {
 	struct ethhdr ethh;
@@ -1070,6 +1088,8 @@ static __always_inline int do_tproxy_lan_ingress(struct __sk_buff *skb, u32 link
 	struct tuples tuples;
 
 	get_tuples(skb, &tuples, &iph, &ipv6h, &tcph, &udph, l4proto);
+	if (is_bypass_source_ip(&tuples.five.sip))
+		return TC_ACT_OK;
 
 	/*
    * ip rule add fwmark 0x8000000/0x8000000 table 2023
@@ -1330,12 +1350,17 @@ static __always_inline int do_tproxy_wan_ingress(struct __sk_buff *skb, u32 link
 		return TC_ACT_OK;
 	}
 
+	// Prepare five tuples.
+	struct tuples tuples;
+
+	get_tuples(skb, &tuples, &iph, &ipv6h, &tcph, &udph, l4proto);
+	if (is_bypass_source_ip(&tuples.five.dip))
+		return TC_ACT_OK;
+
 	// Update UDP Conntrack
 	if (l4proto == IPPROTO_UDP) {
-		struct tuples tuples;
 		struct tuples_key reversed_tuples_key;
 
-		get_tuples(skb, &tuples, &iph, &ipv6h, &tcph, &udph, l4proto);
 		copy_reversed_tuples(&tuples.five, &reversed_tuples_key);
 
 		if (!refresh_udp_conn_state_timer(&reversed_tuples_key, true))

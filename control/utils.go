@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/daeuniverse/dae/common"
@@ -121,6 +122,30 @@ func SetIpv4forward(val string) error {
 		return err
 	}
 	return nil
+}
+
+func parseBypassSourceIP(values []string) ([]netip.Prefix, error) {
+	var prefixes []netip.Prefix
+	for _, value := range values {
+		v := strings.TrimSpace(value)
+		if v == "" {
+			continue
+		}
+		if strings.Contains(v, "/") {
+			prefix, err := netip.ParsePrefix(v)
+			if err != nil {
+				return nil, fmt.Errorf("cannot parse %v: %w", value, err)
+			}
+			prefixes = append(prefixes, prefix)
+			continue
+		}
+		addr, err := netip.ParseAddr(v)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse %v: %w", value, err)
+		}
+		prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
+	}
+	return prefixes, nil
 }
 
 func SetForwarding(ifname string, val string) {

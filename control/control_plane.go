@@ -375,6 +375,13 @@ func NewControlPlane(
 	if err != nil {
 		return nil, fmt.Errorf("RoutingMatcherBuilder.BuildUserspace: %w", err)
 	}
+	bypassPrefixes, err := parseBypassSourceIP(global.BypassSourceIp)
+	if err != nil {
+		return nil, fmt.Errorf("parse bypass_source_ip: %w", err)
+	}
+	if err = core.UpdateBypassSourceIP(bypassPrefixes); err != nil {
+		return nil, fmt.Errorf("UpdateBypassSourceIP: %w", err)
+	}
 
 	// New control plane.
 	ctx, cancel := context.WithCancel(context.Background())

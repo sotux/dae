@@ -685,6 +685,42 @@ func (c *controlPlaneCore) BatchRemoveDomainRouting(cache *DnsCache) error {
 	return nil
 }
 
+func (c *controlPlaneCore) UpdateBypassSourceIP(prefixes []netip.Prefix) error {
+	if c.bpf.BypassSourceIpMap == nil {
+		return fmt.Errorf("bypass_source_ip_map is not initialized")
+	}
+	var existing []_bpfLpmKey
+	iter := c.bpf.BypassSourceIpMap.Iterate()
+	var key _bpfLpmKey
+	var val uint32
+	for iter.Next(&key, &val) {
+		existing = append(existing, key)
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("iterate bypass_source_ip_map: %w", err)
+	}
+	if len(existing) > 0 {
+		if _, err := BpfMapBatchDelete(c.bpf.BypassSourceIpMap, existing); err != nil {
+			return err
+		}
+	}
+	if len(prefixes) == 0 {
+		return nil
+	}
+	keys := make([]_bpfLpmKey, 0, len(prefixes))
+	vals := make([]uint32, 0, len(prefixes))
+	for _, prefix := range prefixes {
+		keys = append(keys, cidrToBpfLpmKey(prefix))
+		vals = append(vals, 1)
+	}
+	if _, err := BpfMapBatchUpdate(c.bpf.BypassSourceIpMap, keys, vals, &ebpf.BatchOptions{
+		ElemFlags: uint64(ebpf.UpdateAny),
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
 // EjectBpf will resect bpf from destroying life-cycle of control plane core.
 func (c *controlPlaneCore) EjectBpf() *bpfObjects {
 	if !c.bpfEjected && !c.isReload {

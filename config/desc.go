@@ -46,6 +46,7 @@ var GlobalDesc = Desc{
 	"check_tolerance":       "Group will switch node only when new_latency <= old_latency - tolerance.",
 	"lan_interface":         "The LAN interface to bind. Use it if you want to proxy LAN.",
 	"wan_interface":         "The WAN interface to bind. Use it if you want to proxy localhost. Use \"auto\" to auto detect.",
+	"bypass_source_ip":      "Source IP/CIDR list to bypass eBPF capture (skip tproxy processing). IPv4 and IPv6 are supported.",
 	"allow_insecure":        "Allow insecure TLS certificates. It is not recommended to turn it on unless you have to.",
 	"dial_mode": `Optional values of dial_mode are:
 1. "ip". Dial proxy using the IP from DNS directly. This allows your ipv4, ipv6 to choose the optimal path respectively, and makes the IP version requested by the application meet expectations. For example, if you use curl -4 ip.sb, you will request IPv4 via proxy and get a IPv4 echo. And curl -6 ip.sb will request IPv6. This may solve some weird full-cone problem if your are be your node support that.Sniffing will be disabled in this mode.

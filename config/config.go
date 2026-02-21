@@ -31,6 +31,7 @@ type Global struct {
 	CheckTolerance        time.Duration `mapstructure:"check_tolerance" default:"0"`
 	LanInterface          []string      `mapstructure:"lan_interface"`
 	WanInterface          []string      `mapstructure:"wan_interface"`
+	BypassSourceIp        []string      `mapstructure:"bypass_source_ip"`
 	AllowInsecure         bool          `mapstructure:"allow_insecure" default:"false"`
 	DialMode              string        `mapstructure:"dial_mode" default:"domain"`
 	DisableWaitingNetwork bool          `mapstructure:"disable_waiting_network" default:"false"`
