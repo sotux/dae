@@ -825,7 +825,7 @@ func (c *ControlPlane) Serve(readyChan chan<- bool, listener *Listener) (err err
 			convergeSrc := common.ConvergeAddrPort(src)
 			// Debug:
 			// t := time.Now()
-			DefaultUdpTaskPool.EmitTask(convergeSrc.String(), func() {
+			DefaultUdpTaskPool.EmitTask(convergeSrc.String(), convergeSrc.Addr().String(), func() {
 				data := newBuf
 				oob := newOob
 				src := newSrc

@@ -20,13 +20,13 @@ func TestUdpTaskPool(t *testing.T) {
 	t.Log(c)
 	DefaultNatTimeout = 1000 * time.Microsecond
 	for i := 0; i < 100; i++ {
-		DefaultUdpTaskPool.EmitTask("testkey", func() { time.Sleep(100 * time.Microsecond) })
+		DefaultUdpTaskPool.EmitTask("testkey", "10.0.0.1", func() { time.Sleep(100 * time.Microsecond) })
 		time.Sleep(99 * time.Microsecond)
 	}
 	time.Sleep(1 * time.Second)
-	DefaultUdpTaskPool.EmitTask("testkey", func() { time.Sleep(100 * time.Second) })
+	DefaultUdpTaskPool.EmitTask("testkey", "10.0.0.1", func() { time.Sleep(100 * time.Second) })
 	time.Sleep(2 * time.Second)
-	DefaultUdpTaskPool.EmitTask("testkey", func() { time.Sleep(100 * time.Second) })
+	DefaultUdpTaskPool.EmitTask("testkey", "10.0.0.1", func() { time.Sleep(100 * time.Second) })
 	c, err = cpu.Times(false)
 	require.NoError(t, err)
 	t.Log(c)
